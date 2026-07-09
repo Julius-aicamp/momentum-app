@@ -315,6 +315,77 @@ async function hashPassword(pw) {
 }
 function normUser(u) { return (u || "").trim().toLowerCase(); }
 
+const GOOGLE_CLIENT_ID_KEY = "momentum_google_client_id";
+
+function getGoogleClientId() {
+  try { return localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || ""; } catch (e) { return ""; }
+}
+function setGoogleClientId(id) {
+  try { localStorage.setItem(GOOGLE_CLIENT_ID_KEY, id.trim()); } catch (e) { /* ignore */ }
+}
+
+let googleScriptLoaded = false;
+function loadGoogleScriptOnce() {
+  if (googleScriptLoaded || document.getElementById("google-identity-script")) return;
+  googleScriptLoaded = true;
+  const s = document.createElement("script");
+  s.src = "https://accounts.google.com/gsi/client";
+  s.id = "google-identity-script";
+  s.async = true;
+  s.defer = true;
+  s.onload = () => renderGoogleButton();
+  s.onerror = () => { diagBanner = { ok: false, message: "Could not load accounts.google.com/gsi/client — blocked by network/browser, or you're on file:// (see banner above)." }; render(); };
+  document.head.appendChild(s);
+}
+
+function renderGoogleButton() {
+  const clientId = getGoogleClientId();
+  const el = document.getElementById("googleBtnContainer");
+  if (!clientId || !el || typeof google === "undefined" || !google.accounts) return;
+  try {
+    google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleCredential });
+    google.accounts.id.renderButton(el, { theme: "filled_black", size: "large", width: 328, shape: "pill" });
+  } catch (e) {
+    diagBanner = { ok: false, message: "Google Sign-In init failed: " + e.message };
+    render();
+  }
+}
+
+function decodeJwtPayload(jwt) {
+  const base64 = jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+  const json = decodeURIComponent(atob(base64).split("").map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join(""));
+  return JSON.parse(json);
+}
+
+function handleGoogleCredential(response) {
+  try {
+    const payload = decodeJwtPayload(response.credential);
+    const u = normUser(payload.email);
+    if (!auth.users[u]) {
+      auth.users[u] = { googleAccount: true, createdAt: Date.now(), name: payload.name || "" };
+    }
+    auth.currentUser = u;
+    saveAuth();
+    state = loadState();
+    route = { name: "dashboard" };
+    render();
+    toast("Signed in as " + (payload.name || payload.email));
+  } catch (e) {
+    authError = "Google sign-in failed: " + e.message;
+    render();
+  }
+}
+
+function submitGoogleClientIdForm(e) {
+  e.preventDefault();
+  const id = document.getElementById("g_client_id").value;
+  setGoogleClientId(id);
+  render();
+  loadGoogleScriptOnce();
+  if (googleScriptLoaded && typeof google !== "undefined") renderGoogleButton();
+  return false;
+}
+
 let auth = loadAuth();
 let authMode = "signin";     // 'signin' | 'signup'
 let authError = "";
@@ -603,20 +674,73 @@ function headerHtml() {
       <div class="header-right">
         <span class="user-pill">${icon('target')}&nbsp;<b>${escapeHtml(auth.currentUser || "")}</b></span>
         ${showStreak ? `<div class="streak-pill">${icon('flame')} ${overall.current}</div>` : ""}
+        <button class="btn btn-outline btn-sm" onclick="testAIConnection()">Test AI connection</button>
         <button class="btn btn-primary btn-sm" onclick="go('new-goal')">${icon('plus')} New goal</button>
         <button class="btn-outline btn-sm" onclick="handleSignout()">Log out</button>
         <button class="btn-ghost" title="Reset this account's local data" onclick="resetAll()">↺</button>
       </div>
     </div>
+  </div>
+  ${fileOriginBannerHtml()}
+  ${diagBanner ? diagBannerHtml() : ""}`;
+}
+
+function fileOriginBannerHtml() {
+  if (location.protocol !== "file:") return "";
+  return `
+  <div class="container" style="padding-top:12px">
+    <div class="card" style="border-color:#5a4a12;background:#2a2308;padding:12px 16px;font-size:13px">
+      <b>Heads up:</b> you're opening this as a local file (<code>file://</code>). Some browsers — Safari especially,
+      sometimes Chrome with strict extensions — block network requests entirely from local files, which would make
+      every AI call fail with no server-side cause. Quickest fix: open a terminal in this file's folder and run
+      <code>python3 -m http.server 8000</code>, then visit <code>http://localhost:8000/</code> and open the file from there instead.
+      That single change fixes this for every browser.
+    </div>
+  </div>`;
+}
+
+let diagBanner = null; // { ok: bool, message: string } | null
+
+async function testAIConnection() {
+  diagBanner = { ok: null, message: "Testing…" };
+  render();
+  try {
+    const r = await callFreeAIOnce("Output ONLY raw JSON.", 'Return exactly this JSON: {"ok":true}');
+    diagBanner = { ok: true, message: "Success — the free AI API is reachable from this browser. Response: " + JSON.stringify(r) };
+  } catch (e) {
+    diagBanner = { ok: false, message: e.message };
+  }
+  render();
+}
+
+function diagBannerHtml() {
+  const color = diagBanner.ok === true ? "var(--success)" : diagBanner.ok === false ? "var(--danger)" : "var(--muted)";
+  return `
+  <div class="container" style="padding-top:12px">
+    <div class="card" style="border-color:${color};font-size:13px">
+      <b style="color:${color}">${diagBanner.ok === true ? "AI connection OK" : diagBanner.ok === false ? "AI connection failed" : "Testing…"}</b>
+      <div style="margin-top:4px;word-break:break-word">${escapeHtml(diagBanner.message)}</div>
+      <button class="reset-link" style="margin-top:8px" onclick="diagBanner=null;render()">Dismiss</button>
+    </div>
   </div>`;
 }
 
 function authView() {
+  const clientId = getGoogleClientId();
   return `
   <div class="auth-wrap">
     <div class="auth-card">
       <div class="auth-brand"><span class="flame-anim" style="color:var(--primary)">${icon('flame')}</span> Momentum</div>
       <div class="card">
+        ${clientId ? `
+        <div id="googleBtnContainer" style="display:flex;justify-content:center;margin-bottom:14px"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="flex:1;height:1px;background:var(--card-border)"></div>
+          <span class="muted" style="font-size:12px">or</span>
+          <div style="flex:1;height:1px;background:var(--card-border)"></div>
+        </div>` : `
+        <button class="btn btn-outline btn-block" style="margin-bottom:14px" onclick="googleSetupOpen=true;render()">Set up "Sign in with Google"</button>
+        `}
         <div class="auth-tabs">
           <button class="auth-tab ${authMode==='signin'?'active':''}" onclick="authMode='signin';authError='';render()">Sign in</button>
           <button class="auth-tab ${authMode==='signup'?'active':''}" onclick="authMode='signup';authError='';render()">Sign up</button>
@@ -634,8 +758,31 @@ function authView() {
           <button type="submit" class="btn btn-primary btn-lg btn-block">${authMode==='signin' ? 'Sign in' : 'Create account'}</button>
         </form>
       </div>
-      <p class="auth-note">You need an account to create and track goals. Accounts live only in this browser's local storage — this is a local login gate, not real server-side security. Don't reuse a password you use elsewhere.</p>
+      <p class="auth-note">You need an account to create and track goals. Local accounts live only in this browser's storage — not real server-side security. Google sign-in uses Google's own identity service; this app never sees your Google password.</p>
+      ${googleSetupOpen ? googleSetupPanelHtml() : ""}
     </div>
+  </div>`;
+}
+
+let googleSetupOpen = false;
+
+function googleSetupPanelHtml() {
+  const onFileOrigin = location.protocol === "file:";
+  return `
+  <div class="card" style="margin-top:14px;text-align:left">
+    <b style="font-size:13.5px">Set up real Google Sign-In</b>
+    <ol style="margin:10px 0 0; padding-left:18px; font-size:12.5px; color:var(--muted-2); line-height:1.7">
+      <li>Go to <b>console.cloud.google.com</b> → APIs &amp; Services → Credentials.</li>
+      <li>Create an OAuth Client ID, type "Web application".</li>
+      <li>Add this page's exact URL under "Authorized JavaScript origins" (must be http/https — <b>file:// won't work</b>, see banner above).</li>
+      <li>Copy the Client ID (it's not secret, safe to paste below) and paste it here.</li>
+    </ol>
+    ${onFileOrigin ? `<div style="margin-top:10px;font-size:12px;color:var(--danger)">You're on file:// right now — Google won't allow sign-in until this is served over http/https. See the banner at the top for the one-line fix.</div>` : ""}
+    <form onsubmit="return submitGoogleClientIdForm(event)" style="margin-top:10px">
+      <input type="text" id="g_client_id" placeholder="xxxxxxxxxx.apps.googleusercontent.com" value="${escapeHtml(getGoogleClientId())}">
+      <button type="submit" class="btn btn-primary btn-sm" style="margin-top:8px">Save &amp; enable</button>
+      <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px" onclick="googleSetupOpen=false;render()">Close</button>
+    </form>
   </div>`;
 }
 
@@ -1166,7 +1313,8 @@ function render() {
   const app = document.getElementById("app");
 
   if (!auth.currentUser) {
-    app.innerHTML = authView();
+    app.innerHTML = fileOriginBannerHtml() + authView();
+    if (getGoogleClientId() && location.protocol !== "file:") loadGoogleScriptOnce();
     return;
   }
 
