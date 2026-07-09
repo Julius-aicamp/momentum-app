@@ -495,10 +495,39 @@ function calcStreak(completedSet, freezeSet) {
 let lastAIStatus = null;   // null | 'ok' | 'fallback' | 'pending'
 let lastAIError = null;    // human-readable reason for the last fallback, shown in console + UI
 
+const AI_PROXY_KEY = "momentum_ai_proxy_url";
+function getAIProxyUrl() {
+  try { return localStorage.getItem(AI_PROXY_KEY) || ""; } catch (e) { return ""; }
+}
+function setAIProxyUrl(url) {
+  try { localStorage.setItem(AI_PROXY_KEY, url.trim()); } catch (e) { /* ignore */ }
+}
+
 async function callFreeAIOnce(systemPrompt, userPrompt) {
+  const proxyUrl = getAIProxyUrl();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
   try {
+    if (proxyUrl) {
+      // Your own Cloudflare Worker, holding your own Gemini key server-side.
+      const res = await fetch(proxyUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({ system: systemPrompt, user: userPrompt }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(`Proxy request failed: HTTP ${res.status} ${(data.error || "").slice(0, 200)}`);
+      if (data.error) throw new Error("Proxy error: " + data.error);
+      if (!data.content) throw new Error("Proxy response had no content field: " + JSON.stringify(data).slice(0, 300));
+      try {
+        return JSON.parse(data.content);
+      } catch (parseErr) {
+        throw new Error("Proxy response was not valid JSON: " + String(data.content).slice(0, 300));
+      }
+    }
+
+    // Default: free, keyless Pollinations endpoint — zero setup, no key anywhere.
     const res = await fetch(AI_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -675,6 +704,7 @@ function headerHtml() {
         <span class="user-pill">${icon('target')}&nbsp;<b>${escapeHtml(auth.currentUser || "")}</b></span>
         ${showStreak ? `<div class="streak-pill">${icon('flame')} ${overall.current}</div>` : ""}
         <button class="btn btn-outline btn-sm" onclick="testAIConnection()">Test AI connection</button>
+        <button class="btn btn-outline btn-sm" onclick="aiSettingsOpen=!aiSettingsOpen;render()">AI settings</button>
         <button class="btn btn-primary btn-sm" onclick="go('new-goal')">${icon('plus')} New goal</button>
         <button class="btn-outline btn-sm" onclick="handleSignout()">Log out</button>
         <button class="btn-ghost" title="Reset this account's local data" onclick="resetAll()">↺</button>
@@ -682,7 +712,48 @@ function headerHtml() {
     </div>
   </div>
   ${fileOriginBannerHtml()}
-  ${diagBanner ? diagBannerHtml() : ""}`;
+  ${diagBanner ? diagBannerHtml() : ""}
+  ${aiSettingsOpen ? aiSettingsPanelHtml() : ""}`;
+}
+
+let aiSettingsOpen = false;
+
+function aiSettingsPanelHtml() {
+  const current = getAIProxyUrl();
+  return `
+  <div class="container" style="padding-top:12px">
+    <div class="card" style="text-align:left">
+      <b style="font-size:13.5px">AI source</b>
+      <p class="muted" style="font-size:12.5px;margin-top:6px">
+        By default this app uses a free, keyless public API — zero setup, but shared capacity.
+        For your own dedicated, more reliable AI, deploy the included Cloudflare Worker proxy
+        (holds your own free Gemini key server-side, never exposed) and paste its URL here.
+      </p>
+      <form onsubmit="return submitAIProxyForm(event)" style="margin-top:10px">
+        <input type="text" id="ai_proxy_url" placeholder="https://your-worker.your-subdomain.workers.dev" value="${escapeHtml(current)}">
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+          ${current ? `<button type="button" class="btn btn-outline btn-sm" onclick="clearAIProxyUrl()">Clear (use free default)</button>` : ""}
+          <button type="button" class="btn btn-outline btn-sm" onclick="aiSettingsOpen=false;render()">Close</button>
+        </div>
+      </form>
+      <p class="muted" style="font-size:11.5px;margin-top:10px">Currently using: <b>${current ? "your Cloudflare Worker proxy" : "free public API (no key)"}</b></p>
+    </div>
+  </div>`;
+}
+
+function submitAIProxyForm(e) {
+  e.preventDefault();
+  setAIProxyUrl(document.getElementById("ai_proxy_url").value);
+  toast("AI source updated");
+  render();
+  return false;
+}
+
+function clearAIProxyUrl() {
+  setAIProxyUrl("");
+  toast("Back to the free default API");
+  render();
 }
 
 function fileOriginBannerHtml() {
