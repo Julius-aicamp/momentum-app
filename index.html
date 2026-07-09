@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Momentum — goals that actually happen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --radius: 14px;
+    --bg: #05100a;
+    --fg: #e7f7ec;
+    --card: #0d1f14;
+    --card-border: #1e3a28;
+    --muted: #7fa38c;
+    --muted-2: #9fc4ac;
+    --primary: #34d17c;
+    --primary-light: #123321;
+    --primary-dark: #22a862;
+    --secondary: #12261a;
+    --secondary-fg: #bfe8cd;
+    --accent: #0f2e1e;
+    --accent-fg: #5be89a;
+    --success: #34d17c;
+    --success-bg: #10301f;
+    --danger: #ef5b5b;
+    --flame-glow: rgba(52, 209, 124, 0.45);
+    --shadow-soft: 0 4px 24px -8px rgba(0, 0, 0, 0.55);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .font-display {
+    font-family: 'Fraunces', Georgia, serif;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  #app { min-height: 100vh; padding-bottom: 4rem; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; }
+  .container { max-width: 900px; margin: 0 auto; padding: 0 1.5rem; }
+
+  /* header / shell */
+  .shell-header {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(251,248,242,0.85);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--card-border);
+  }
+  .shell-header-inner {
+    max-width: 900px; margin: 0 auto; padding: 0.75rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 600; }
+  .brand svg { animation: flame-flicker 2.4s ease-in-out infinite; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .streak-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--primary-light); color: var(--primary-dark);
+    padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700;
+  }
+
+  /* buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border-radius: 10px; border: 1px solid transparent; font-size: 14px; font-weight: 600;
+    padding: 9px 16px; transition: all .15s ease; white-space: nowrap;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-outline { background: var(--card); border-color: var(--card-border); color: var(--fg); }
+  .btn-outline:hover { background: #163a24; }
+  .btn-ghost { background: transparent; color: var(--muted-2); padding: 8px; border-radius: 999px; }
+  .btn-ghost:hover { background: #163a24; }
+  .btn-sm { font-size: 13px; padding: 6px 12px; }
+  .btn-lg { font-size: 16px; padding: 12px 20px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-block { width: 100%; }
+
+  /* cards */
+  .card {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 16px; padding: 1.25rem;
+  }
+  .card-hover:hover { box-shadow: var(--shadow-soft); transform: translateY(-2px); }
+  .card { transition: box-shadow .15s ease, transform .15s ease; }
+
+  /* form elements */
+  label.field-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--secondary-fg); }
+  input[type=text], input[type=date], textarea, input[type=email], input[type=password] {
+    width: 100%; border: 1px solid var(--card-border); border-radius: 10px;
+    padding: 10px 12px; font-size: 14px; font-family: inherit; background: #0a1c12; color: var(--fg);
+  }
+  input:focus, textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+  textarea { resize: vertical; min-height: 60px; }
+  .field { margin-bottom: 1.1rem; }
+  .field-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* badges */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--accent); color: var(--accent-fg); }
+
+  /* progress bar */
+  .progress-track { height: 7px; background: #13291a; border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--primary); border-radius: 99px; transition: width .3s ease; }
+
+  /* goal grid */
+  .goal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 1.5rem; }
+  .goal-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .flame-badge {
+    display: flex; flex-direction: column; align-items: center; gap: 0;
+    background: var(--primary-light); color: var(--primary-dark);
+    border-radius: 12px; padding: 6px 12px; flex-shrink: 0;
+  }
+  .flame-badge span { font-size: 14px; font-weight: 800; }
+  .add-goal-card {
+    border: 1.5px dashed var(--card-border); border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 160px; padding: 1.5rem; text-align: center; cursor: pointer;
+    transition: background .15s ease;
+  }
+  .add-goal-card:hover { background: #10241760; }
+  .plus-circle {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light); color: var(--primary-dark);
+    display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;
+  }
+
+  /* stat cards */
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 2rem; }
+  .stat-card { background: #10241a; border-radius: var(--radius); padding: 1rem; }
+  .stat-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-2); }
+  .stat-value { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700; margin-top: 6px; }
+
+  /* streak badge (goal detail) */
+  .streak-badge-lg {
+    display: flex; align-items: center; gap: 12px; border: 1px solid #1f4a30;
+    background: linear-gradient(135deg, var(--primary-light), #0d2417);
+    border-radius: 18px; padding: 10px 16px;
+  }
+  .streak-badge-lg .num { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; line-height: 1; }
+
+  /* tabs */
+  .tabs-list { display: inline-flex; background: #10241a; border-radius: 10px; padding: 3px; gap: 2px; }
+  .tab-btn { border: none; background: transparent; padding: 7px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 600; color: var(--muted-2); }
+  .tab-btn.active { background: #1a3c26; color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
+  /* checkbox row */
+  .action-row {
+    display: flex; align-items: flex-start; gap: 12px; border: 1px solid var(--card-border);
+    border-radius: 12px; padding: 12px; cursor: pointer; transition: all .15s ease;
+  }
+  .action-row.done { border-color: #2e6b45; background: var(--success-bg); }
+  .action-row:hover:not(.done) { background: #10241a; }
+  .chk {
+    width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--card-border);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 2px;
+    background: #0a1c12;
+  }
+  .chk.checked { background: var(--primary); border-color: var(--primary); color: #05100a; }
+
+  /* 30 day grid */
+  .day-grid { display: flex; gap: 4px; flex-wrap: wrap; }
+  .day-cell {
+    width: 22px; height: 22px; border-radius: 6px; font-size: 9px; background: #13291a;
+    display: flex; align-items: center; justify-content: center; border: none; color: #05100a;
+    transition: transform .1s ease;
+  }
+  .day-cell:hover { transform: scale(1.15); }
+  .day-cell.done { background: var(--primary); }
+  .day-cell.frozen { background: #4e7fb8; }
+  .legend { display: flex; gap: 16px; margin-top: 14px; font-size: 12px; color: var(--muted-2); align-items: center; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 4px; display: inline-block; margin-right: 5px; vertical-align: -2px; }
+
+  /* roadmap */
+  .week-block { margin-bottom: 1.5rem; }
+  .week-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .task-row { border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+  .task-row.done { border-color: #2e6b45; background: var(--success-bg); }
+  .task-row .task-title { font-weight: 600; }
+  .task-row .task-title.done { text-decoration: line-through; opacity: .55; }
+  .hours-chip { font-size: 11px; background: #13291a; color: var(--muted-2); padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
+  .ifthen { font-size: 12px; color: #6fd99f; margin-top: 6px; }
+  .ifthen b { font-weight: 700; }
+
+  /* review card (calibration) */
+  .review-card { overflow: hidden; padding: 0 !important; }
+  .review-top { border-bottom: 1px solid var(--card-border); background: #0f2418; padding: 1.1rem 1.25rem; }
+  .review-bottom { padding: 1.1rem 1.25rem; }
+  .strike { text-decoration: line-through; opacity: .55; }
+  .kicker { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .why-box { margin-top: 1rem; background: var(--accent); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+
+  /* landing */
+  .landing-hero { text-align: center; padding: 5rem 1rem 3rem; }
+  .landing-hero h1 { font-size: 48px; line-height: 1.05; }
+  .flame-text { background: linear-gradient(135deg, #52e896, #1f9c58); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .pill-note {
+    display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--card-border);
+    background: var(--card); padding: 4px 14px; border-radius: 999px; font-size: 12.5px; color: var(--muted-2);
+  }
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; padding: 0 0 4rem; }
+  .feature-card { border-radius: 18px; }
+
+  /* misc */
+  .muted { color: var(--muted-2); }
+  .center { text-align: center; }
+  .empty-wrap { max-width: 480px; margin: 2rem auto 0; text-align: center; }
+  .toast-wrap { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: #123321; color: #e7f7ec; padding: 10px 18px; border-radius: 10px; font-size: 13.5px; border: 1px solid #2e6b45;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2); animation: toast-in .2s ease;
+  }
+  .toast.err { background: #3a1414; border-color: #7a2e2e; }
+  @keyframes toast-in { from { opacity:0; transform: translateY(-8px);} to {opacity:1; transform: translateY(0);} }
+
+  @keyframes flame-flicker {
+    0%,100% { transform: scale(1) rotate(-2deg); filter: drop-shadow(0 0 6px var(--flame-glow)); }
+    50% { transform: scale(1.06) rotate(2deg); filter: drop-shadow(0 0 12px var(--flame-glow)); }
+  }
+  .flame-anim { animation: flame-flicker 2.4s ease-in-out infinite; }
+
+  @keyframes pop-in { 0%{transform:scale(.5);opacity:0;} 60%{transform:scale(1.15);opacity:1;} 100%{transform:scale(1);} }
+  .pop { animation: pop-in .35s cubic-bezier(.34,1.56,.64,1); }
+
+  @keyframes confetti-fall { 0% { transform: translateY(-20px) rotate(0deg); opacity:1; } 100% { transform: translateY(140px) rotate(720deg); opacity:0; } }
+
+  .local-note {
+    font-size: 12px; color: var(--muted); text-align: center; padding: 10px 1.5rem 0;
+  }
+  .reset-link { font-size: 12px; color: var(--muted); text-decoration: underline; cursor: pointer; background:none; border:none; padding:0; }
+
+  @media (max-width: 640px) {
+    .landing-hero h1 { font-size: 34px; }
+    .stat-grid { grid-template-columns: 1fr; }
+  }
+
+  /* auth screen */
+  .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+  .auth-card { width: 100%; max-width: 400px; }
+  .auth-brand { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 20px; font-weight: 600; margin-bottom: 1.5rem; }
+  .auth-tabs { display: flex; background: #10241a; border-radius: 10px; padding: 3px; margin-bottom: 1.4rem; }
+  .auth-tab { flex: 1; text-align: center; border: none; background: transparent; padding: 8px; border-radius: 8px; font-size: 13.5px; font-weight: 600; color: var(--muted-2); }
+  .auth-tab.active { background: #1a3c26; color: var(--fg); }
+  .auth-note { font-size: 11.5px; color: var(--muted); text-align: center; margin-top: 1rem; line-height: 1.5; }
+  .auth-error { font-size: 13px; color: var(--danger); margin-top: 4px; min-height: 16px; }
+  .user-pill { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-2); }
+  .user-pill b { color: var(--fg); }
+  .ai-status { font-size: 11.5px; color: var(--muted); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+  .ai-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .ai-dot.ok { background: var(--primary); }
+  .ai-dot.spin { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:.4;} 50%{opacity:1;} }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+<script>
+/* =========================================================
+   Momentum — standalone replica, no Lovable / no Supabase.
+
+   - Auth: local-only sign up / sign in. Accounts and goal data are
+     stored in this browser's localStorage, namespaced per username.
+     This is a UI gate, NOT real security — don't reuse a real
+     password here, and don't expect this to protect anything if
+     someone has access to this browser profile.
+   - AI: calibration + roadmap generation call the free, keyless
+     Pollinations community text API (text.pollinations.ai) directly
+     from the browser — no signup, no API key, no server of ours in
+     the middle. If that request fails, times out, or returns
+     something unparseable, the app instantly falls back to a local,
+     fully offline rule-based generator, so a roadmap is ALWAYS
+     produced either way.
+========================================================= */
+
+const AUTH_KEY = "momentum_auth_v1";
+const STORE_PREFIX = "momentum_standalone_v1";
+const AI_ENDPOINT = "https://text.pollinations.ai/openai";
+const AI_TIMEOUT_MS = 20000;
+
+function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+function toISO(d) { return d.toISOString().slice(0, 10); }
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+function escapeHtml(s) {
+  return (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ---------- auth (local-only) ---------- */
+function loadAuth() {
+  try {
+    const raw = localStorage.getItem(AUTH_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* ignore */ }
+  return { users: {}, currentUser: null };
+}
+function saveAuth() {
+  try { localStorage.setItem(AUTH_KEY, JSON.stringify(auth)); } catch (e) { /* ignore */ }
+}
+async function hashPassword(pw) {
+  const enc = new TextEncoder().encode(pw);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+function normUser(u) { return (u || "").trim().toLowerCase(); }
+
+let auth = loadAuth();
+let authMode = "signin";     // 'signin' | 'signup'
+let authError = "";
+
+async function handleSignup(username, password) {
+  const u = normUser(username);
+  authError = "";
+  if (!u || !password) { authError = "Enter a username and password."; render(); return; }
+  if (password.length < 4) { authError = "Password needs at least 4 characters."; render(); return; }
+  if (auth.users[u]) { authError = "That username is already taken."; render(); return; }
+  auth.users[u] = { passHash: await hashPassword(password), createdAt: Date.now() };
+  auth.currentUser = u;
+  saveAuth();
+  state = loadState();
+  route = { name: "dashboard" };
+  render();
+}
+async function handleSignin(username, password) {
+  const u = normUser(username);
+  authError = "";
+  if (!u || !password) { authError = "Enter your username and password."; render(); return; }
+  const rec = auth.users[u];
+  if (!rec) { authError = "No account with that username yet — sign up instead."; render(); return; }
+  const h = await hashPassword(password);
+  if (h !== rec.passHash) { authError = "Wrong password."; render(); return; }
+  auth.currentUser = u;
+  saveAuth();
+  state = loadState();
+  route = { name: "dashboard" };
+  render();
+}
+function handleSignout() {
+  auth.currentUser = null;
+  saveAuth();
+  render();
+}
+
+/* ---------- persistence (per logged-in user) ---------- */
+function storeKey() { return STORE_PREFIX + "::" + (auth.currentUser || "anon"); }
+function loadState() {
+  try {
+    const raw = localStorage.getItem(storeKey());
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* ignore */ }
+  return {
+    goals: [],
+    tasks: [],
+    dailyActions: [],
+    completions: [],
+    freezes: [],
+    freezeCredits: 3,
+  };
+}
+function saveState() {
+  try { localStorage.setItem(storeKey(), JSON.stringify(state)); } catch (e) { /* ignore */ }
+}
+
+let state = auth.currentUser ? loadState() : { goals: [], tasks: [], dailyActions: [], completions: [], freezes: [], freezeCredits: 3 };
+let route = { name: "dashboard" };       // transient, not persisted
+let detailTab = "habits";                 // transient
+
+/* ---------- streak calc (ported 1:1 from src/lib/streak.ts) ---------- */
+function daysBetween(a, b) {
+  const da = new Date(a + "T00:00:00Z").getTime();
+  const db = new Date(b + "T00:00:00Z").getTime();
+  return Math.round((db - da) / 86400000);
+}
+function calcStreak(completedSet, freezeSet) {
+  if (completedSet.size === 0 && freezeSet.size === 0) return { current: 0, longest: 0 };
+  const all = Array.from(new Set([...completedSet, ...freezeSet])).sort();
+  const earliest = all[0];
+  const todayISO = toISO(new Date());
+  const totalDays = daysBetween(earliest, todayISO) + 1;
+
+  let longest = 0, run = 0, missedYesterday = false;
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(earliest + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + i);
+    const iso = toISO(d);
+    const active = completedSet.has(iso) || freezeSet.has(iso);
+    if (active) { run += 1; missedYesterday = false; longest = Math.max(longest, run); }
+    else { if (missedYesterday) run = 0; else missedYesterday = true; }
+  }
+
+  let current = 0, graceUsed = false;
+  for (let i = 0; ; i++) {
+    const d = new Date(todayISO + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() - i);
+    const iso = toISO(d);
+    const active = completedSet.has(iso) || freezeSet.has(iso);
+    if (active) { current += 1; graceUsed = false; }
+    else {
+      if (i === 0) continue;
+      if (!graceUsed) graceUsed = true; else break;
+    }
+    if (i > 3650) break;
+  }
+  return { current, longest };
+}
+
+/* ---------- local "calibration" + "breakdown" heuristics ----------
+   Used as the guaranteed fallback if the free AI call below fails,
+   times out, or is unreachable — fully offline, deterministic,
+   rule-based, no network request, no API key needed. */
+function calibrateGoalLocal({ title, baseline, targetDate, obstacles, whyMotivation, whatIfNot }) {
+  const today = new Date();
+  const targetD = new Date(targetDate + "T00:00:00");
+  let weeks = Math.ceil((targetD - today) / (7 * 86400000));
+  let wasRecalibrated = false;
+  let calibratedDeadline = targetDate;
+  let tier;
+
+  if (isNaN(weeks) || weeks < 2) {
+    const bumped = new Date(today.getTime() + 6 * 7 * 86400000);
+    calibratedDeadline = toISO(bumped);
+    wasRecalibrated = true;
+    weeks = 6;
+    tier = "hard";
+  } else if (weeks < 4) {
+    tier = "very_hard";
+  } else if (weeks < 8) {
+    tier = "hard";
+  } else if (weeks < 16) {
+    tier = "moderate";
+  } else {
+    tier = "easy";
+  }
+
+  const obstacleCount = (obstacles || "").split(/[,.;\n]/).map((s) => s.trim()).filter(Boolean).length;
+  const smartScore = Math.max(40, Math.min(96, 58 + Math.min(weeks, 20) - obstacleCount * 2));
+
+  const metric = `Weekly check-ins tracking concrete progress toward: ${title}`;
+
+  const tierLabel = tier.replace("_", " ");
+  const explanation = wasRecalibrated
+    ? `Your original deadline left less than 2 weeks — not enough runway for a goal like this. We pushed the deadline out to ${fmtDate(calibratedDeadline)} (~${weeks} weeks) so the plan below is actually achievable.`
+    : `Based on your baseline and a ~${weeks}-week runway, this lands at "${tierLabel}" difficulty — stretchy but doable if you stay consistent.`;
+
+  return {
+    calibrated_target: title,
+    calibrated_metric: metric,
+    calibrated_deadline: calibratedDeadline,
+    difficulty_tier: tier,
+    smart_score: smartScore,
+    explanation,
+    was_recalibrated: wasRecalibrated,
+  };
+}
+
+function generateBreakdownLocal(goal) {
+  const weeksLeft = Math.max(1, Math.min(8, Math.ceil(
+    (new Date(goal.calibrated_deadline + "T00:00:00") - new Date()) / (7 * 86400000)
+  )));
+  const obstacleList = (goal.obstacles || "")
+    .split(/[,.;\n]/).map((s) => s.trim()).filter(Boolean).slice(0, 3);
+
+  const taskTemplates = [
+    ["Plan this week's approach", `Block time and decide exactly what you'll do this week toward: ${goal.calibrated_target}`, 1],
+    ["Do the core session", "The main 1-2 hour block of deliberate, focused work on your goal.", 2],
+    ["Review & adjust", "Look at what worked and what didn't this week, tweak next week's plan.", 1],
+    ["Log your progress", `Write down where you stand vs your target: ${goal.calibrated_metric}`, 1],
+  ];
+
+  const tasks = [];
+  for (let w = 1; w <= weeksLeft; w++) {
+    taskTemplates.forEach(([t, d, hrs], i) => {
+      tasks.push({
+        id: uid(),
+        goal_id: goal.id,
+        title: t,
+        description: d,
+        week_number: w,
+        sprint_order: i,
+        estimated_hours: hrs,
+        if_then_plans: obstacleList.map((o) => ({
+          trigger: o,
+          response: "do a shorter 20-minute version instead of skipping entirely",
+        })),
+        completed: false,
+        completed_at: null,
+      });
+    });
+  }
+
+  const dailyActions = [
+    { id: uid(), goal_id: goal.id, title: "Daily check-in", description: "Spend 10-15 minutes moving your goal forward, however small.", active: true },
+    { id: uid(), goal_id: goal.id, title: "Log today's effort", description: "One line: what did you actually do today?", active: true },
+  ];
+  if (goal.why_motivation) {
+    dailyActions.push({ id: uid(), goal_id: goal.id, title: "Reconnect with your why", description: goal.why_motivation, active: true });
+  }
+
+  return { tasks, dailyActions };
+}
+
+/* ---------- free AI call (Pollinations — no signup, no API key) ----------
+   Anonymous/free tier, keyless, CORS-open text endpoint. We ask for
+   strict JSON (response_format json_object) with reasoning_effort
+   "low" so the model answers directly instead of burning its output
+   budget on hidden chain-of-thought. On ANY failure we fall back to
+   the local generators above — a roadmap is always produced. */
+let lastAIStatus = null; // null | 'ok' | 'fallback' | 'pending'
+
+async function callFreeAI(systemPrompt, userPrompt) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+  try {
+    const res = await fetch(AI_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "openai",
+        reasoning_effort: "low",
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      }),
+    });
+    if (!res.ok) throw new Error("AI request failed: " + res.status);
+    const data = await res.json();
+    const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if (!content) throw new Error("AI response had no content");
+    return JSON.parse(content);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function calibrateGoal(draft) {
+  const { title, baseline, targetDate, obstacles } = draft;
+  const sys = "You are a SMART-goal coaching assistant. Output ONLY a single raw JSON object, no markdown fences, no commentary outside the JSON.";
+  const user = `Return ONLY JSON matching exactly this shape: {"calibrated_target":string,"calibrated_metric":string,"calibrated_deadline":"YYYY-MM-DD","difficulty_tier":"easy"|"moderate"|"hard"|"very_hard"|"unrealistic","smart_score":number (0-100),"explanation":string (max 40 words),"was_recalibrated":boolean}. Rate this goal against SMART criteria, aiming for hard-but-achievable (~90th percentile difficulty given the baseline). If the timeframe is unrealistic, recalibrate the target and/or deadline and set was_recalibrated true. Today is ${toISO(new Date())}. Goal: ${title}. Baseline: ${baseline}. Stated target date: ${targetDate}. Obstacles: ${obstacles || "(none stated)"}.`;
+
+  try {
+    const r = await callFreeAI(sys, user);
+    if (!r.calibrated_target || !r.calibrated_deadline || !r.difficulty_tier) throw new Error("incomplete AI response");
+    let score = Number(r.smart_score);
+    if (!isFinite(score)) score = 70;
+    if (score <= 10) score = score * 10; // model sometimes answers on a 0-10 scale
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    const validTiers = ["easy", "moderate", "hard", "very_hard", "unrealistic"];
+    const tier = validTiers.includes(r.difficulty_tier) ? r.difficulty_tier : "moderate";
+    lastAIStatus = "ok";
+    return {
+      calibrated_target: String(r.calibrated_target).slice(0, 200),
+      calibrated_metric: String(r.calibrated_metric || `Weekly check-ins tracking progress toward: ${title}`).slice(0, 240),
+      calibrated_deadline: /^\d{4}-\d{2}-\d{2}$/.test(r.calibrated_deadline) ? r.calibrated_deadline : targetDate,
+      difficulty_tier: tier,
+      smart_score: score,
+      explanation: String(r.explanation || "").slice(0, 400),
+      was_recalibrated: !!r.was_recalibrated,
+    };
+  } catch (e) {
+    lastAIStatus = "fallback";
+    return calibrateGoalLocal(draft);
+  }
+}
+
+async function generateBreakdown(goal) {
+  const weeksLeft = Math.max(1, Math.min(6, Math.ceil(
+    (new Date(goal.calibrated_deadline + "T00:00:00") - new Date()) / (7 * 86400000)
+  )));
+  const sys = "You are a goal-coaching assistant that turns a calibrated goal into a concrete weekly training/work plan. Output ONLY a single raw JSON object, no markdown fences, no commentary.";
+  const user = `Return ONLY JSON matching exactly this shape: {"weeks":[{"week_number":number,"tasks":[{"title":string,"description":string,"estimated_hours":number,"if_then_plans":[{"trigger":string,"response":string}]}]}],"daily_actions":[{"title":string,"description":string}]}. Break the goal into ${weeksLeft} weekly sprints of 3 tasks each (each task 1-2 hours max, include 1 short if-then plan per task tied to the stated obstacles), plus 2-3 recurring daily habits. Keep every string field under 18 words. Goal: ${goal.calibrated_target}. Metric: ${goal.calibrated_metric}. Baseline: ${goal.baseline}. Obstacles: ${goal.obstacles || "(none)"}. Why it matters: ${goal.why_motivation || "(not stated)"}.`;
+
+  try {
+    const r = await callFreeAI(sys, user);
+    if (!Array.isArray(r.weeks) || r.weeks.length === 0) throw new Error("incomplete AI response");
+    const tasks = [];
+    r.weeks.forEach((w, wi) => {
+      const weekNum = Number(w.week_number) || wi + 1;
+      (w.tasks || []).forEach((t, ti) => {
+        tasks.push({
+          id: uid(),
+          goal_id: goal.id,
+          title: String(t.title || "Untitled task").slice(0, 120),
+          description: String(t.description || "").slice(0, 300),
+          week_number: weekNum,
+          sprint_order: ti,
+          estimated_hours: Number(t.estimated_hours) > 0 ? Number(t.estimated_hours) : 1,
+          if_then_plans: Array.isArray(t.if_then_plans)
+            ? t.if_then_plans.slice(0, 3).map(p => ({ trigger: String(p.trigger || "").slice(0,120), response: String(p.response || "").slice(0,160) }))
+            : [],
+          completed: false,
+          completed_at: null,
+        });
+      });
+    });
+    const dailyActions = (Array.isArray(r.daily_actions) ? r.daily_actions : []).slice(0, 5).map(a => ({
+      id: uid(),
+      goal_id: goal.id,
+      title: String(a.title || "Daily check-in").slice(0, 100),
+      description: String(a.description || "").slice(0, 200),
+      active: true,
+    }));
+    if (tasks.length === 0 || dailyActions.length === 0) throw new Error("empty AI plan");
+    lastAIStatus = "ok";
+    return { tasks, dailyActions };
+  } catch (e) {
+    lastAIStatus = "fallback";
+    return generateBreakdownLocal(goal);
+  }
+}
+
+/* ---------- icons (tiny inline SVGs, no icon font needed) ---------- */
+const ICONS = {
+  flame: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 17a2.5 2.5 0 0 0 2.5-2.5c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3z"/></svg>`,
+  target: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
+  calendar: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
+  plus: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>`,
+  sparkles: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.1 2.1M15.6 15.6l2.1 2.1M17.7 6.3l-2.1 2.1M8.4 15.6l-2.1 2.1"/></svg>`,
+  snow: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1M2 12h20M8 8l8 8M16 8l-8 8"/></svg>`,
+  arrowLeft: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>`,
+  arrowRight: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`,
+  trendUp: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
+};
+function icon(name) { return ICONS[name] || ""; }
+
+/* ---------- toasts ---------- */
+function toast(msg, isErr) {
+  const wrap = document.getElementById("toastWrap");
+  const el = document.createElement("div");
+  el.className = "toast" + (isErr ? " err" : "");
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
+}
+
+/* ---------- confetti ---------- */
+function confetti() {
+  const colors = ["#34d17c", "#52e896", "#1f9c58", "#9fe8c0", "#6fd99f"];
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:998";
+  for (let i = 0; i < 26; i++) {
+    const p = document.createElement("div");
+    const left = 45 + Math.random() * 10;
+    const dur = 0.8 + Math.random() * 0.8;
+    const dx = (Math.random() - 0.5) * 200;
+    p.style.cssText = `position:absolute;top:40%;left:${left}%;width:8px;height:8px;background:${colors[i % colors.length]};border-radius:2px;animation:confetti-fall ${dur}s ease-out forwards;transform:translateX(${dx}px)`;
+    wrap.appendChild(p);
+  }
+  document.body.appendChild(wrap);
+  setTimeout(() => wrap.remove(), 2000);
+}
+
+/* =========================================================
+   VIEWS
+========================================================= */
+
+function headerHtml() {
+  const allCompleted = new Set(state.completions.map(c => c.completed_date));
+  const allFreezes = new Set(state.freezes.map(f => f.freeze_date));
+  const overall = calcStreak(allCompleted, allFreezes);
+  const showStreak = state.goals.length > 0;
+  return `
+  <div class="shell-header">
+    <div class="shell-header-inner">
+      <a href="#" class="brand" onclick="go('dashboard');return false;">
+        <span class="flame-anim" style="color:var(--primary)">${icon('flame')}</span> Momentum
+      </a>
+      <div class="header-right">
+        <span class="user-pill">${icon('target')}&nbsp;<b>${escapeHtml(auth.currentUser || "")}</b></span>
+        ${showStreak ? `<div class="streak-pill">${icon('flame')} ${overall.current}</div>` : ""}
+        <button class="btn btn-primary btn-sm" onclick="go('new-goal')">${icon('plus')} New goal</button>
+        <button class="btn-outline btn-sm" onclick="handleSignout()">Log out</button>
+        <button class="btn-ghost" title="Reset this account's local data" onclick="resetAll()">↺</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function authView() {
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-brand"><span class="flame-anim" style="color:var(--primary)">${icon('flame')}</span> Momentum</div>
+      <div class="card">
+        <div class="auth-tabs">
+          <button class="auth-tab ${authMode==='signin'?'active':''}" onclick="authMode='signin';authError='';render()">Sign in</button>
+          <button class="auth-tab ${authMode==='signup'?'active':''}" onclick="authMode='signup';authError='';render()">Sign up</button>
+        </div>
+        <form onsubmit="return submitAuthForm(event)">
+          <div class="field">
+            <label class="field-label">Username</label>
+            <input type="text" id="a_username" required autocomplete="username" placeholder="e.g. jamie">
+          </div>
+          <div class="field">
+            <label class="field-label">Password</label>
+            <input type="password" id="a_password" required autocomplete="${authMode==='signup'?'new-password':'current-password'}" placeholder="At least 4 characters">
+          </div>
+          <div class="auth-error">${escapeHtml(authError)}</div>
+          <button type="submit" class="btn btn-primary btn-lg btn-block">${authMode==='signin' ? 'Sign in' : 'Create account'}</button>
+        </form>
+      </div>
+      <p class="auth-note">You need an account to create and track goals. Accounts live only in this browser's local storage — this is a local login gate, not real server-side security. Don't reuse a password you use elsewhere.</p>
+    </div>
+  </div>`;
+}
+
+function submitAuthForm(e) {
+  e.preventDefault();
+  const username = document.getElementById("a_username").value;
+  const password = document.getElementById("a_password").value;
+  if (authMode === "signup") handleSignup(username, password);
+  else handleSignin(username, password);
+  return false;
+}
+
+function landingView() {
+  return `
+  <div class="container">
+    <div class="landing-hero">
+      <span class="pill-note">${icon('sparkles')} local calibration · task breakdown · streaks</span>
+      <h1 style="margin-top:1.2rem">Goals that actually <span class="flame-text">happen.</span></h1>
+      <p class="muted" style="max-width:640px;margin:1rem auto 0;font-size:17px;line-height:1.6">
+        You've tried habit trackers before. Momentum calibrates your goal against reality,
+        breaks it into 1-2 hour steps, and keeps you moving with a streak worth protecting.
+        Runs entirely in this browser tab — nothing is sent anywhere.
+      </p>
+      <div style="margin-top:2rem">
+        <button class="btn btn-primary btn-lg" onclick="go('dashboard')">Start your first goal</button>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="card feature-card">
+        <div style="color:var(--primary)">${icon('target')}</div>
+        <h3 style="font-size:19px;margin-top:10px">Calibrate</h3>
+        <p class="muted" style="font-size:14px;margin-top:6px">Tell us the goal, baseline, and deadline. We recalibrate to hard-but-achievable.</p>
+      </div>
+      <div class="card feature-card">
+        <div style="color:var(--primary)">${icon('calendar')}</div>
+        <h3 style="font-size:19px;margin-top:10px">Break it down</h3>
+        <p class="muted" style="font-size:14px;margin-top:6px">Weekly sprints of 1-2 hour tasks, plus if-then plans for your usual obstacles.</p>
+      </div>
+      <div class="card feature-card">
+        <div style="color:var(--primary)">${icon('flame')}</div>
+        <h3 style="font-size:19px;margin-top:10px">Keep the streak</h3>
+        <p class="muted" style="font-size:14px;margin-top:6px">Duolingo-style tracker with a two-day rule and monthly freezes when life happens.</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+function emptyStateHtml() {
+  return `
+  <div class="empty-wrap">
+    <div class="plus-circle" style="width:64px;height:64px">
+      <span style="font-size:28px;color:var(--primary)" class="flame-anim">${icon('flame')}</span>
+    </div>
+    <h1 style="font-size:28px;margin-top:1.2rem">Set your first goal</h1>
+    <p class="muted" style="margin-top:8px">
+      We'll calibrate it against your baseline, break it into weekly sprints,
+      and turn it into a streak worth protecting.
+    </p>
+    <button class="btn btn-primary btn-lg" style="margin-top:1.2rem" onclick="go('new-goal')">Start now</button>
+  </div>`;
+}
+
+function dashboardView() {
+  if (state.goals.length === 0) {
+    return `<div class="container">${emptyStateHtml()}</div>`;
+  }
+
+  const allCompleted = new Set(state.completions.map(c => c.completed_date));
+  const allFreezes = new Set(state.freezes.map(f => f.freeze_date));
+  const overall = calcStreak(allCompleted, allFreezes);
+  const today = toISO(new Date());
+
+  const cards = state.goals.map((goal) => {
+    const goalActions = state.dailyActions.filter(a => a.goal_id === goal.id);
+    const actionIds = new Set(goalActions.map(a => a.id));
+    const goalCompletedDates = new Set(state.completions.filter(c => actionIds.has(c.daily_action_id)).map(c => c.completed_date));
+    const goalFreezeDates = new Set(state.freezes.filter(f => f.goal_id === goal.id).map(f => f.freeze_date));
+    const streak = calcStreak(goalCompletedDates, goalFreezeDates);
+
+    const goalTasks = state.tasks.filter(t => t.goal_id === goal.id);
+    const currentWeek = goalTasks.length ? Math.max(...goalTasks.map(t => t.week_number)) : 1;
+    const sprintTasks = goalTasks.filter(t => t.week_number === currentWeek);
+    const sprintDone = sprintTasks.filter(t => t.completed).length;
+    const sprintPct = sprintTasks.length ? Math.round((sprintDone / sprintTasks.length) * 100) : 0;
+
+    const doneToday = goalActions.some(a => goalCompletedDates.has(today));
+    const daysToDeadline = goal.calibrated_deadline
+      ? Math.max(0, Math.ceil((new Date(goal.calibrated_deadline + "T00:00:00") - new Date()) / 86400000))
+      : null;
+
+    let statusLabel, statusClass;
+    if (doneToday) { statusLabel = "On track today"; statusClass = "color:var(--success);font-weight:600"; }
+    else if (streak.current > 0) { statusLabel = "Check in today"; statusClass = "color:var(--primary);font-weight:600"; }
+    else { statusLabel = "Get started"; statusClass = "color:var(--muted-2)"; }
+
+    return `
+    <div class="card card-hover" style="cursor:pointer" onclick="go('goal-detail','${goal.id}')">
+      <div class="goal-card-top">
+        <div style="min-width:0;flex:1">
+          <h3 style="font-size:19px;line-height:1.25">${escapeHtml(goal.calibrated_target || goal.title)}</h3>
+          ${goal.difficulty_tier ? `<span class="badge" style="margin-top:8px;display:inline-block">${escapeHtml(goal.difficulty_tier.replace("_"," "))}</span>` : ""}
+        </div>
+        <div class="flame-badge">
+          <span style="color:var(--primary-dark)" class="${streak.current>0?'flame-anim':''}">${icon('flame')}</span>
+          <span>${streak.current}</span>
+        </div>
+      </div>
+      <div style="margin-top:14px;font-size:13px">
+        <div style="display:flex;justify-content:space-between;color:var(--muted-2)">
+          <span>${icon('target')} Week ${currentWeek} sprint</span>
+          <span style="color:var(--fg);font-weight:600">${sprintDone}/${sprintTasks.length}</span>
+        </div>
+        <div class="progress-track" style="margin-top:6px"><div class="progress-fill" style="width:${sprintPct}%"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px">
+          ${daysToDeadline !== null ? `<span class="muted">${icon('calendar')} ${daysToDeadline}d to deadline</span>` : "<span></span>"}
+          <span style="${statusClass}">${statusLabel}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const totalCheckins30 = new Set(
+    state.completions.map(c => c.completed_date).filter(d => new Date(d).getTime() >= Date.now() - 30*86400000)
+  ).size;
+
+  return `
+  <div class="container">
+    <h1 style="font-size:32px">Your goals</h1>
+    <p class="muted" style="margin-top:6px">
+      ${overall.current > 0 ? `You're on a ${overall.current}-day streak. Keep going.` : "Check in today to start your streak."}
+    </p>
+    <div class="goal-grid">
+      ${cards}
+      <div class="add-goal-card" onclick="go('new-goal')">
+        <div>
+          <div class="plus-circle">${icon('plus')}</div>
+          <p style="font-weight:600;margin:0">Add a new goal</p>
+          <p class="muted" style="font-size:12.5px;margin-top:2px">Calibrate it against reality</p>
+        </div>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">${icon('flame')} Longest streak</div><div class="stat-value">${overall.longest}</div></div>
+      <div class="stat-card"><div class="stat-label">${icon('target')} Active goals</div><div class="stat-value">${state.goals.length}</div></div>
+      <div class="stat-card"><div class="stat-label">${icon('trendUp')} Check-ins (30d)</div><div class="stat-value">${totalCheckins30}</div></div>
+    </div>
+  </div>`;
+}
+
+/* ---------- new goal flow ---------- */
+let newGoalStep = "form";       // form | review | building
+let newGoalDraft = null;        // form field values held between renders
+let calibrationResult = null;
+
+function newGoalView() {
+  if (newGoalStep === "form") {
+    const d = newGoalDraft || { title: "", baseline: "", targetDate: "", obstacles: "", whyMotivation: "", whatIfNot: "" };
+    return `
+    <div class="container" style="max-width:640px">
+      <h1 style="font-size:30px">What do you want to achieve?</h1>
+      <p class="muted" style="margin-top:6px">Tell us the goal, where you're starting from, and when you want it done. We'll pressure-test it.</p>
+      <form id="goalForm" style="margin-top:1.8rem" onsubmit="return submitGoalForm(event)">
+        <div class="field">
+          <label class="field-label">Goal</label>
+          <input type="text" id="f_title" required placeholder="Run a 3-hour marathon" value="${escapeHtml(d.title)}">
+        </div>
+        <div class="field">
+          <label class="field-label">Where you're starting</label>
+          <textarea id="f_baseline" required rows="2" placeholder="I currently run 5k in 35 minutes, twice a week.">${escapeHtml(d.baseline)}</textarea>
+        </div>
+        <div class="field">
+          <label class="field-label">Target date</label>
+          <input type="date" id="f_targetDate" required value="${escapeHtml(d.targetDate)}">
+        </div>
+        <div class="field">
+          <label class="field-label">What usually gets in the way?</label>
+          <textarea id="f_obstacles" rows="2" placeholder="Travel weeks, late-night work, bad weather.">${escapeHtml(d.obstacles)}</textarea>
+          <p class="field-hint">Used to build if-then plans for your tasks.</p>
+        </div>
+        <div class="field">
+          <label class="field-label">Why does this matter to you?</label>
+          <textarea id="f_whyMotivation" rows="2" placeholder="I want to prove to myself I can commit to something hard.">${escapeHtml(d.whyMotivation)}</textarea>
+        </div>
+        <div class="field">
+          <label class="field-label">What happens if you don't do it?</label>
+          <textarea id="f_whatIfNot" rows="2" placeholder="Another year of half-starting things.">${escapeHtml(d.whatIfNot)}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">${icon('sparkles')} Calibrate my goal</button>
+      </form>
+      <div class="ai-status"><span class="ai-dot ok"></span> Calibration is generated by a free AI API (Pollinations, no signup) with an automatic offline fallback.</div>
+    </div>`;
+  }
+
+  if (newGoalStep === "calibrating") {
+    return `
+    <div class="container center" style="padding-top:5rem;max-width:480px">
+      <div style="font-size:32px;color:var(--primary)" class="flame-anim">${icon('sparkles')}</div>
+      <p style="font-family:'Fraunces',serif;font-size:22px;margin-top:1rem">Calibrating your goal…</p>
+      <p class="muted" style="margin-top:4px">Asking the free AI, with an offline fallback ready</p>
+    </div>`;
+  }
+
+  if (newGoalStep === "review" && calibrationResult) {
+    const r = calibrationResult;
+    const d = newGoalDraft;
+    return `
+    <div class="container" style="max-width:640px">
+      <h1 style="font-size:30px">Here's your calibrated goal</h1>
+      <p class="muted" style="margin-top:6px">
+        ${r.was_recalibrated ? "We adjusted it to hard-but-achievable given your baseline." : "Your goal is already well-calibrated."}
+      </p>
+      <div class="card review-card" style="margin-top:1.5rem">
+        <div class="review-top">
+          <div class="kicker">You asked for</div>
+          <div class="strike" style="margin-top:4px">${escapeHtml(d.title)}</div>
+          <div class="muted" style="font-size:13px;margin-top:4px">by ${fmtDate(d.targetDate)}</div>
+        </div>
+        <div class="review-bottom">
+          <div class="kicker" style="color:var(--primary)">Calibrated target</div>
+          <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;margin-top:4px">${escapeHtml(r.calibrated_target)}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;font-size:13.5px">
+            <div><div class="muted">Metric</div><div style="font-weight:600;margin-top:2px">${escapeHtml(r.calibrated_metric)}</div></div>
+            <div><div class="muted">Deadline</div><div style="font-weight:600;margin-top:2px">${fmtDate(r.calibrated_deadline)}</div></div>
+            <div><div class="muted">Difficulty</div><div style="font-weight:600;margin-top:2px;text-transform:capitalize">${escapeHtml(r.difficulty_tier.replace("_"," "))}</div></div>
+            <div><div class="muted">SMART score</div><div style="font-weight:600;margin-top:2px">${r.smart_score}/100</div></div>
+          </div>
+          <div class="why-box">
+            <div style="font-weight:700;font-size:13px">Why this calibration</div>
+            <div style="margin-top:4px;font-size:13px">${escapeHtml(r.explanation)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="ai-status"><span class="ai-dot ${lastAIStatus === 'ok' ? 'ok' : ''}"></span> ${lastAIStatus === 'ok' ? 'Generated by the free AI API.' : 'Free AI unavailable right now — used the built-in offline calibrator instead.'}</div>
+      <div style="display:flex;gap:10px;margin-top:1.2rem;flex-wrap:wrap">
+        <button class="btn btn-primary btn-lg" onclick="acceptCalibration()">Accept & build roadmap ${icon('arrowRight')}</button>
+        <button class="btn btn-outline btn-lg" onclick="newGoalStep='form';render()">Edit inputs</button>
+      </div>
+    </div>`;
+  }
+
+  // building
+  return `
+  <div class="container center" style="padding-top:5rem;max-width:480px">
+    <div style="font-size:32px;color:var(--primary)" class="flame-anim">${icon('sparkles')}</div>
+    <p style="font-family:'Fraunces',serif;font-size:22px;margin-top:1rem">Building your weekly sprints…</p>
+    <p class="muted" style="margin-top:4px">Asking the free AI for a personalized breakdown, offline fallback ready</p>
+  </div>`;
+}
+
+async function submitGoalForm(e) {
+  e.preventDefault();
+  newGoalDraft = {
+    title: document.getElementById("f_title").value.trim(),
+    baseline: document.getElementById("f_baseline").value.trim(),
+    targetDate: document.getElementById("f_targetDate").value,
+    obstacles: document.getElementById("f_obstacles").value.trim(),
+    whyMotivation: document.getElementById("f_whyMotivation").value.trim(),
+    whatIfNot: document.getElementById("f_whatIfNot").value.trim(),
+  };
+  newGoalStep = "calibrating";
+  render();
+  calibrationResult = await calibrateGoal(newGoalDraft);
+  newGoalStep = "review";
+  render();
+  return false;
+}
+
+async function acceptCalibration() {
+  const r = calibrationResult;
+  const d = newGoalDraft;
+  const goal = {
+    id: uid(),
+    title: d.title,
+    baseline: d.baseline,
+    target_date: d.targetDate,
+    calibrated_target: r.calibrated_target,
+    calibrated_metric: r.calibrated_metric,
+    calibrated_deadline: r.calibrated_deadline,
+    difficulty_tier: r.difficulty_tier,
+    calibration_explanation: r.explanation,
+    why_motivation: d.whyMotivation,
+    what_if_not: d.whatIfNot,
+    obstacles: d.obstacles,
+    status: "active",
+    created_at: new Date().toISOString(),
+  };
+  state.goals.push(goal);
+
+  newGoalStep = "building";
+  render();
+
+  {
+    const { tasks, dailyActions } = await generateBreakdown(goal);
+    state.tasks.push(...tasks);
+    state.dailyActions.push(...dailyActions);
+    saveState();
+    toast(lastAIStatus === "ok" ? "Roadmap built by the free AI" : "Roadmap built (offline fallback)");
+    newGoalStep = "form";
+    newGoalDraft = null;
+    calibrationResult = null;
+    go("goal-detail", goal.id);
+  }
+}
+
+/* ---------- goal detail ---------- */
+function goalDetailView(goalId) {
+  const goal = state.goals.find(g => g.id === goalId);
+  if (!goal) return `<div class="container"><p class="muted">Goal not found.</p></div>`;
+
+  const actions = state.dailyActions.filter(a => a.goal_id === goal.id && a.active);
+  const actionIds = new Set(actions.map(a => a.id));
+  const completions = state.completions.filter(c => actionIds.has(c.daily_action_id));
+  const completedDates = new Set(completions.map(c => c.completed_date));
+  const freezes = state.freezes.filter(f => f.goal_id === goal.id);
+  const freezeDates = new Set(freezes.map(f => f.freeze_date));
+  const streak = calcStreak(completedDates, freezeDates);
+  const tasks = state.tasks.filter(t => t.goal_id === goal.id).sort((a,b) => a.week_number - b.week_number || a.sprint_order - b.sprint_order);
+
+  return `
+  <div class="container">
+    <a href="#" onclick="go('dashboard');return false;" class="muted" style="display:inline-flex;align-items:center;gap:6px;font-size:13.5px;margin-bottom:1rem">
+      ${icon('arrowLeft')} Dashboard
+    </a>
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:1.5rem">
+      <div style="min-width:0;flex:1">
+        <h1 style="font-size:28px">${escapeHtml(goal.calibrated_target || goal.title)}</h1>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:13px" class="muted">
+          ${goal.calibrated_deadline ? `<span>${icon('calendar')} ${fmtDate(goal.calibrated_deadline)}</span>` : ""}
+          ${goal.difficulty_tier ? `<span class="badge" style="text-transform:capitalize">${escapeHtml(goal.difficulty_tier.replace("_"," "))}</span>` : ""}
+          ${goal.calibrated_metric ? `<span>${icon('target')} ${escapeHtml(goal.calibrated_metric)}</span>` : ""}
+        </div>
+      </div>
+      <div class="streak-badge-lg">
+        <span style="color:var(--primary);font-size:30px" class="${streak.current>0?'flame-anim':''}">${icon('flame')}</span>
+        <div>
+          <div class="num">${streak.current}</div>
+          <div class="muted" style="font-size:12px">day streak · best ${streak.longest}</div>
+          <div class="muted" style="font-size:12px;margin-top:2px">${icon('snow')} ${state.freezeCredits} freezes left</div>
+        </div>
+      </div>
+    </div>
+
+    ${goal.why_motivation ? `
+    <div class="card" style="border-color:#1f4a30;background:#0d2417;margin-bottom:1.5rem">
+      <div class="kicker" style="color:var(--primary)">${icon('sparkles')} Why this matters</div>
+      <div style="margin-top:6px;font-size:14px">${escapeHtml(goal.why_motivation)}</div>
+    </div>` : ""}
+
+    <div class="tabs-list">
+      <button class="tab-btn ${detailTab==='habits'?'active':''}" onclick="detailTab='habits';render()">Habits</button>
+      <button class="tab-btn ${detailTab==='roadmap'?'active':''}" onclick="detailTab='roadmap';render()">Roadmap</button>
+    </div>
+
+    <div style="margin-top:1.5rem">
+      ${detailTab === 'habits' ? habitsGridHtml(goal, actions, completions, freezes) : roadmapHtml(tasks)}
+    </div>
+  </div>`;
+}
+
+function habitsGridHtml(goal, actions, completions, freezes) {
+  if (actions.length === 0) {
+    return `<div class="card center muted" style="padding:2rem">No daily habits yet. Rebuild your roadmap to generate them.</div>`;
+  }
+  const today = toISO(new Date());
+  const freezeSet = new Set(freezes.map(f => f.freeze_date));
+  const compMap = {};
+  completions.forEach(c => {
+    (compMap[c.daily_action_id] ||= new Set()).add(c.completed_date);
+  });
+
+  const days = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(toISO(d));
+  }
+
+  const todayRows = actions.map(a => {
+    const done = (compMap[a.id] || new Set()).has(today);
+    return `
+    <div class="action-row ${done?'done':''}" onclick="toggleAction('${a.id}','${today}',${done})">
+      <div class="chk ${done?'checked':''}">${done ? icon('check') : ""}</div>
+      <div style="flex:1">
+        <div style="font-weight:600;${done?'text-decoration:line-through;opacity:.6':''}">${escapeHtml(a.title)}</div>
+        ${a.description ? `<div class="muted" style="font-size:13px;margin-top:2px">${escapeHtml(a.description)}</div>` : ""}
+      </div>
+      ${done ? `<span class="pop" style="font-size:20px">🔥</span>` : ""}
+    </div>`;
+  }).join("");
+
+  const gridRows = actions.map(a => {
+    const set = compMap[a.id] || new Set();
+    const cells = days.map(d => {
+      const done = set.has(d);
+      const froze = freezeSet.has(d);
+      const cls = done ? "done" : froze ? "frozen" : "";
+      return `<button type="button" class="day-cell ${cls}" title="${d}" onclick="toggleAction('${a.id}','${d}',${done})">${done ? "✓" : froze ? "❄" : ""}</button>`;
+    }).join("");
+    return `<div style="margin-bottom:12px"><div style="font-size:13.5px;font-weight:600;margin-bottom:6px">${escapeHtml(a.title)}</div><div class="day-grid">${cells}</div></div>`;
+  }).join("");
+
+  const freezeDisabled = state.freezeCredits <= 0 || freezeSet.has(today);
+
+  return `
+  <div class="card" style="margin-bottom:1.2rem">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="font-size:17px">Today · ${today}</h3>
+      <button class="btn btn-outline btn-sm" ${freezeDisabled?'disabled':''} onclick="applyFreeze('${goal.id}','${today}')">${icon('snow')} Freeze today</button>
+    </div>
+    <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">${todayRows}</div>
+  </div>
+  <div class="card">
+    <h3 style="font-size:17px">Last 30 days</h3>
+    <div style="margin-top:14px">${gridRows}</div>
+    <div class="legend">
+      <span><span class="legend-swatch" style="background:var(--primary)"></span>done</span>
+      <span><span class="legend-swatch" style="background:#4e7fb8"></span>freeze</span>
+      <span><span class="legend-swatch" style="background:#13291a"></span>empty</span>
+    </div>
+  </div>`;
+}
+
+function roadmapHtml(tasks) {
+  if (tasks.length === 0) return `<div class="card center muted" style="padding:2rem">No tasks yet.</div>`;
+  const byWeek = {};
+  tasks.forEach(t => (byWeek[t.week_number] ||= []).push(t));
+  const weeks = Object.keys(byWeek).map(Number).sort((a,b)=>a-b);
+
+  return weeks.map(w => {
+    const ws = byWeek[w];
+    const done = ws.filter(t => t.completed).length;
+    const rows = ws.map(t => {
+      const plans = Array.isArray(t.if_then_plans) ? t.if_then_plans : [];
+      return `
+      <div class="task-row ${t.completed?'done':''}">
+        <div style="display:flex;gap:10px;align-items:flex-start;cursor:pointer" onclick="toggleTask('${t.id}',${!t.completed})">
+          <div class="chk ${t.completed?'checked':''}" style="margin-top:1px">${t.completed ? icon('check') : ""}</div>
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;gap:8px">
+              <div class="task-title ${t.completed?'done':''}">${escapeHtml(t.title)}</div>
+              ${t.estimated_hours ? `<span class="hours-chip">${t.estimated_hours}h</span>` : ""}
+            </div>
+            ${t.description ? `<div class="muted" style="font-size:13px;margin-top:3px">${escapeHtml(t.description)}</div>` : ""}
+            ${plans.map(p => `<div class="ifthen"><b>If</b> ${escapeHtml(p.trigger)} <b>then</b> ${escapeHtml(p.response)}</div>`).join("")}
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+    return `
+    <div class="week-block">
+      <div class="week-head">
+        <h3 style="font-size:19px">Week ${w}</h3>
+        <span class="muted" style="font-size:13px">${done}/${ws.length} done</span>
+      </div>
+      ${rows}
+    </div>`;
+  }).join("");
+}
+
+/* =========================================================
+   ROUTER / ACTIONS
+========================================================= */
+
+function go(name, id) {
+  route = { name, id };
+  if (name === "goal-detail") detailTab = "habits";
+  if (name === "new-goal") { newGoalStep = "form"; newGoalDraft = null; calibrationResult = null; }
+  render();
+  window.scrollTo({ top: 0 });
+}
+
+function toggleTask(taskId, completed) {
+  const t = state.tasks.find(t => t.id === taskId);
+  if (!t) return;
+  t.completed = completed;
+  t.completed_at = completed ? new Date().toISOString() : null;
+  saveState();
+  render();
+}
+
+function toggleAction(actionId, date, currentlyDone) {
+  if (currentlyDone) {
+    state.completions = state.completions.filter(c => !(c.daily_action_id === actionId && c.completed_date === date));
+  } else {
+    state.completions.push({ daily_action_id: actionId, completed_date: date });
+    if (date === toISO(new Date())) {
+      confetti();
+      toast("Check-in locked in! 🔥");
+    }
+  }
+  saveState();
+  render();
+}
+
+function applyFreeze(goalId, date) {
+  if (state.freezeCredits <= 0) { toast("No freezes left this month.", true); return; }
+  const exists = state.freezes.some(f => f.goal_id === goalId && f.freeze_date === date);
+  if (exists) return;
+  state.freezes.push({ goal_id: goalId, freeze_date: date });
+  state.freezeCredits -= 1;
+  saveState();
+  toast("Streak protected ❄️");
+  render();
+}
+
+function resetAll() {
+  if (!confirm("Delete all local goals, tasks and streak data for this account (" + auth.currentUser + ")? This can't be undone.")) return;
+  state = { goals: [], tasks: [], dailyActions: [], completions: [], freezes: [], freezeCredits: 3 };
+  saveState();
+  go("dashboard");
+  toast("This account's local data was cleared");
+}
+
+function render() {
+  const app = document.getElementById("app");
+
+  if (!auth.currentUser) {
+    app.innerHTML = authView();
+    return;
+  }
+
+  let body;
+  if (route.name === "new-goal") body = newGoalView();
+  else if (route.name === "goal-detail") body = goalDetailView(route.id);
+  else body = dashboardView();
+
+  app.innerHTML = headerHtml() + `<div style="padding-top:1.5rem">${body}</div>` +
+    `<div class="local-note">Runs locally in this browser. Goal data is stored under your account in localStorage; calibration and roadmap generation use a free public AI API with an automatic offline fallback.
+      &nbsp;<button class="reset-link" onclick="resetAll()">Reset this account's data</button></div>`;
+}
+
+/* initial route: straight to dashboard (skip marketing landing on load) */
+render();
+</script>
+</body>
+</html>
